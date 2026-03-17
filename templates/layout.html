@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+<head><title>Expense Tracker</title></head>
+<body>
+    <nav>
+        <a href="/">Home</a> |
+        {% if session.user_id %}<a href="/logout">Logout</a>{% else %}<a href="/login">Login</a>{% endif %}
+    </nav>
+    <hr>
+    {% block body %}{% endblock %}
+</body>
+</html>
