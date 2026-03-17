@@ -1,0 +1,19 @@
+{% extends "layout.html" %}
+{% block body %}
+    <h2>Add Expense</h2>
+    <form action="/add" method="post">
+        <input name="amount" placeholder="Amount" type="number" step="0.01" required>
+        <select name="category">
+            <option>Food</option><option>Rent</option><option>Fun</option>
+        </select>
+        <button type="submit">Add</button>
+    </form>
+
+    <h2>History (Total: ${{ "%.2f"|format(total) }})</h2>
+    <table border="1">
+        <tr><th>Category</th><th>Amount</th><th>Date</th></tr>
+        {% for e in expenses %}
+        <tr><td>{{ e.category }}</td><td>${{ e.amount }}</td><td>{{ e.date }}</td></tr>
+        {% endfor %}
+    </table>
+{% endblock %}
