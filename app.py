@@ -17,7 +17,6 @@ Session(app)
 
 
 def query_db(query, args=(), one=False):
-    # This finds the EXACT folder where your app.py lives
     base_dir = os.path.dirname(os.path.abspath(__file__))
     db_path = os.path.join(base_dir, "finance.db")
 
