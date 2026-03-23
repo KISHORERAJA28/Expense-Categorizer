@@ -49,7 +49,7 @@ def index ():
 
     return render_template("index.html", expenses=expenses, total=res['total'] or 0)
 
-@app.route("/add", methods=["POST"])
+@app.route("/add", methods=[""])
 @login_required
 def add():
     amount = request.form.get("amount")
