@@ -38,7 +38,7 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-@app.route("/")
+@app.route("")
 @login_required
 def index():
     user_id = session["user_id"]
