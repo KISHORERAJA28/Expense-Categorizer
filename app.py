@@ -40,7 +40,7 @@ def login_required(f):
 
 @app.route("/")
 @login_required
-def index():
+def ():
     user_id = session["user_id"]
 
 
