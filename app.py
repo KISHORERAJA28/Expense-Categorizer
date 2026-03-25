@@ -8,7 +8,7 @@ import sqlite3
 app = Flask(__name__)
 
 
-app.config.
+app.config.update(
     SESSION_PERMANENT=False,
     SESSION_TYPE="filesystem",
     SECRET_KEY=os.urandom(24)
