@@ -1,6 +1,6 @@
 import os
 from functools import wraps
- import Flask, render_template, request, redirect, session, flash
+from flask import Flask, render_template, request, redirect, session, flash
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
 import sqlite3 
