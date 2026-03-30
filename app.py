@@ -102,7 +102,7 @@ def login():
 
     return render_template("login.html")
 
-@app.route("/logout")
+@app.route("/")
 def logout():
     session.clear()
     return redirect("/login")
