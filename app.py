@@ -4,11 +4,10 @@ from flask import Flask, render_template, request, redirect, session, flash
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
 import sqlite3 
- 
 
 app = Flask(__name__)
 
-
+# Configure session
 app.config.update(
     SESSION_PERMANENT=False,
     SESSION_TYPE="filesystem",
@@ -16,7 +15,7 @@ app.config.update(
 )
 Session(app)
 
-
+# Database helper function
 def query_db(query, args=(), one=False):
     base_dir = os.path.dirname(os.path.abspath(__file__))
     db_path = os.path.join(base_dir, "finance.db")
@@ -29,8 +28,7 @@ def query_db(query, args=(), one=False):
         rv = cur.fetchall()
         return (rv[0] if rv else None) if one else rv
 
-
-
+# Login requirement decorator
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -41,14 +39,43 @@ def login_required(f):
 
 @app.route("/")
 @login_required
-def index ():
+def index():
     user_id = session["user_id"]
-
-
+    
+    # Get user's budget and expenses
+    user = query_db("SELECT budget FROM users WHERE id = ?", [user_id], one=True)
     expenses = query_db("SELECT * FROM expenses WHERE user_id = ? ORDER BY id DESC", [user_id])
     res = query_db("SELECT SUM(amount) as total FROM expenses WHERE user_id = ?", [user_id], one=True)
+    
+    total_spent = res['total'] or 0
+    budget = user['budget'] or 0
+    remaining = budget - total_spent
 
-    return render_template("index.html", expenses=expenses, total=res['total'] or 0)
+    # Savings suggestions logic
+    suggestion = ""
+    if budget == 0:
+        suggestion = "Set a monthly budget to get savings tips!"
+    elif remaining > (budget * 0.5):
+        suggestion = "Great job! You've saved over 50% of your budget. Consider moving some to a high-yield savings account."
+    elif remaining > 0:
+        suggestion = f"You have ${remaining:,.2f} left. Try to avoid 'Fun' expenses to reach your goal this month."
+    else:
+        suggestion = "Alert: You've exceeded your budget! Review your 'Food' and 'Fun' categories to cut back."
+
+    return render_template("index.html", 
+                           expenses=expenses, 
+                           total=total_spent, 
+                           budget=budget, 
+                           remaining=remaining, 
+                           suggestion=suggestion)
+
+@app.route("/update_budget", methods=["POST"])
+@login_required
+def update_budget():
+    new_budget = request.form.get("budget")
+    if new_budget:
+        query_db("UPDATE users SET budget = ? WHERE id = ?", [new_budget, session["user_id"]])
+    return redirect("/")
 
 @app.route("/add", methods=["POST"])
 @login_required
@@ -86,11 +113,9 @@ def register():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     session.clear()
-
     if request.method == "POST":
         username = request.form.get("username")
         password = request.form.get("password")
-
         user = query_db("SELECT * FROM users WHERE username = ?", [username], one=True)
 
         if user and check_password_hash(user["hash"], password):
@@ -98,7 +123,7 @@ def login():
             return redirect("/")
 
         flash("Invalid username and/or password")
-        return render_template("login.html", error="Invalid credentials")
+        return render_template("login.html")
 
     return render_template("login.html")
 
@@ -109,3 +134,4 @@ def logout():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
