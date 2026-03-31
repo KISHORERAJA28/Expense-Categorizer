@@ -1,13 +1,13 @@
 import os
+from datetime import datetime
 from functools import wraps
 from flask import Flask, render_template, request, redirect, session, flash
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
-import sqlite3 
+import sqlite3
 
 app = Flask(__name__)
 
-# Configure session
 app.config.update(
     SESSION_PERMANENT=False,
     SESSION_TYPE="filesystem",
@@ -15,116 +15,93 @@ app.config.update(
 )
 Session(app)
 
-# Database helper function
-def query_db(query, args=(), one=False):
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    db_path = os.path.join(base_dir, "finance.db")
-
+def db_run(query, args=(), one=False):
+    db_path = os.path.join(os.path.dirname(__file__), "finance.db")
     with sqlite3.connect(db_path) as conn:
         conn.row_factory = sqlite3.Row
         cur = conn.execute(query, args)
-        if "INSERT" in query or "UPDATE" in query or "DELETE" in query:
+        if any(x in query.upper() for x in ["INSERT", "UPDATE", "DELETE"]):
             conn.commit()
-        rv = cur.fetchall()
-        return (rv[0] if rv else None) if one else rv
+        res = cur.fetchall()
+        return (res[0] if res else None) if one else res
 
-# Login requirement decorator
+# Login Protector
 def login_required(f):
     @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if session.get("user_id") is None:
+    def decorated(*args, **kwargs):
+        if not session.get("user_id"):
             return redirect("/login")
         return f(*args, **kwargs)
-    return decorated_function
+    return decorated
 
 @app.route("/")
 @login_required
 def index():
-    user_id = session["user_id"]
-    
-    # Get user's budget and expenses
-    user = query_db("SELECT budget FROM users WHERE id = ?", [user_id], one=True)
-    expenses = query_db("SELECT * FROM expenses WHERE user_id = ? ORDER BY id DESC", [user_id])
-    res = query_db("SELECT SUM(amount) as total FROM expenses WHERE user_id = ?", [user_id], one=True)
-    
-    total_spent = res['total'] or 0
-    budget = user['budget'] or 0
-    remaining = budget - total_spent
+    uid = session["user_id"]
+    this_month = datetime.now().strftime('%Y-%m')
 
-    # Savings suggestions logic
-    suggestion = ""
-    if budget == 0:
-        suggestion = "Set a monthly budget to get savings tips!"
-    elif remaining > (budget * 0.5):
-        suggestion = "Great job! You've saved over 50% of your budget. Consider moving some to a high-yield savings account."
-    elif remaining > 0:
-        suggestion = f"You have ${remaining:,.2f} left. Try to avoid 'Fun' expenses to reach your goal this month."
-    else:
-        suggestion = "Alert: You've exceeded your budget! Review your 'Food' and 'Fun' categories to cut back."
+    user = db_run("SELECT budget FROM users WHERE id = ?", [uid], one=True)
+    salary = user['budget'] or 0
 
-    return render_template("index.html", 
-                           expenses=expenses, 
-                           total=total_spent, 
-                           budget=budget, 
-                           remaining=remaining, 
-                           suggestion=suggestion)
+    all_expenses = db_run("SELECT * FROM expenses WHERE user_id = ? ORDER BY date DESC", [uid])
+    monthly_sum = db_run("SELECT SUM(amount) as total FROM expenses WHERE user_id = ? AND strftime('%Y-%m', date) = ?",
+                         [uid, this_month], one=True)
 
-@app.route("/update_budget", methods=["POST"])
-@login_required
-def update_budget():
-    new_budget = request.form.get("budget")
-    if new_budget:
-        query_db("UPDATE users SET budget = ? WHERE id = ?", [new_budget, session["user_id"]])
-    return redirect("/")
+    total_spent = monthly_sum['total'] or 0
+    surplus = salary - total_spent
+
+    strategy = None
+    if surplus >= 20000:
+        strategy = {"amt": "20,000", "focus": "Multi-cap approach with Step-up features", "corpus": "₹44.8 Lakhs"}
+    elif surplus >= 15000:
+        strategy = {"amt": "15,000", "focus": "Goal-based (Education/Retirement) with ELSS for tax", "corpus": "₹33.6 Lakhs"}
+    elif surplus >= 10000:
+        strategy = {"amt": "10,000", "focus": "Diversified Portfolio (Equity + Debt/PPF)", "corpus": "₹22.4 Lakhs"}
+    elif surplus >= 5000:
+        strategy = {"amt": "5,000", "focus": "Small-Cap or Index Funds for long-term growth", "corpus": "₹11.2 Lakhs"}
+
+    return render_template("index.html", expenses=all_expenses, spent=total_spent, salary=salary, surplus=surplus, strategy=strategy)
 
 @app.route("/add", methods=["POST"])
 @login_required
 def add():
-    amount = request.form.get("amount")
-    category = request.form.get("category")
-
-    if not amount or not category:
-        flash("Fill out all fields!")
-        return redirect("/")
-
-    query_db("INSERT INTO expenses (user_id, amount, category) VALUES (?, ?, ?)",
-             [session["user_id"], amount, category])
-
+    amt, cat = request.form.get("amount"), request.form.get("category")
+    if amt and cat:
+        db_run("INSERT INTO expenses (user_id, amount, category) VALUES (?, ?, ?)", [session["user_id"], float(amt), cat])
     return redirect("/")
 
+@app.route("/update_salary", methods=["POST"])
+@login_required
+def update_salary():
+    salary = request.form.get("salary")
+    if salary:
+        db_run("UPDATE users SET budget = ? WHERE id = ?", [salary, session["user_id"]])
+    return redirect("/")
+
+@app.route("/clear", methods=["POST"])
+@login_required
+def clear():
+    db_run("DELETE FROM expenses WHERE user_id = ?", [session["user_id"]])
+    return redirect("/")
+
+# Standard Auth Routes
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
-
-        if not username or not password:
-            return "Missing username/password", 400
-
-        hash = generate_password_hash(password)
+        u, p = request.form.get("username"), request.form.get("password")
         try:
-            query_db("INSERT INTO users (username, hash) VALUES (?, ?)", [username, hash])
+            db_run("INSERT INTO users (username, hash) VALUES (?, ?)", [u, generate_password_hash(p)])
             return redirect("/login")
-        except sqlite3.IntegrityError:
-            return "That username is already gone.", 400
-
+        except: return "Username taken", 400
     return render_template("register.html")
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    session.clear()
     if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
-        user = query_db("SELECT * FROM users WHERE username = ?", [username], one=True)
-
-        if user and check_password_hash(user["hash"], password):
+        user = db_run("SELECT * FROM users WHERE username = ?", [request.form.get("username")], one=True)
+        if user and check_password_hash(user["hash"], request.form.get("password")):
             session["user_id"] = user["id"]
             return redirect("/")
-
-        flash("Invalid username and/or password")
-        return render_template("login.html")
-
     return render_template("login.html")
 
 @app.route("/logout")
@@ -134,4 +111,3 @@ def logout():
 
 if __name__ == "__main__":
     app.run(debug=True)
-
