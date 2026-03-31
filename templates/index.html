@@ -1,19 +1,48 @@
 {% extends "layout.html" %}
+
 {% block body %}
+    <!-- 1. Budget & Suggestions Section -->
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #ddd;">
+        <h3>Monthly Budget: ${{ "%.2f"|format(budget) }}</h3>
+        <form action="/update_budget" method="post">
+            <input name="budget" type="number" placeholder="Update Budget" step="0.01" required>
+            <button type="submit">Set</button>
+        </form>
+        <p style="margin-top: 10px; color: #2c3e50;"><strong>Tip:</strong> {{ suggestion }}</p>
+    </div>
+
+    <!-- 2. Input Form Section -->
     <h2>Add Expense</h2>
     <form action="/add" method="post">
         <input name="amount" placeholder="Amount" type="number" step="0.01" required>
         <select name="category">
-            <option>Food</option><option>Rent</option><option>Fun</option>
+            <option>Food</option>
+            <option>Rent</option>
+            <option>Fun</option>
         </select>
         <button type="submit">Add</button>
     </form>
 
-    <h2>History (Total: ${{ "%.2f"|format(total) }})</h2>
-    <table border="1">
-        <tr><th>Category</th><th>Amount</th><th>Date</th></tr>
+    <hr>
+
+    <!-- 3. Summary & History Table Section -->
+    <h2>History (Remaining: ${{ "%.2f"|format(remaining) }})</h2>
+    <p>Total Spent: ${{ "%.2f"|format(total) }}</p>
+    
+    <table border="1" width="100%" style="border-collapse: collapse; text-align: left;">
+        <tr style="background-color: #eee;">
+            <th>Category</th>
+            <th>Amount</th>
+            <th>Date</th>
+        </tr>
         {% for e in expenses %}
-        <tr><td>{{ e.category }}</td><td>${{ e.amount }}</td><td>{{ e.date }}</td></tr>
+        <tr>
+            <td>{{ e.category }}</td>
+            <td>${{ "%.2f"|format(e.amount) }}</td>
+            <td>{{ e.date }}</td>
+        </tr>
         {% endfor %}
     </table>
 {% endblock %}
+
+
