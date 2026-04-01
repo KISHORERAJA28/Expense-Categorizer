@@ -25,7 +25,7 @@ def db_run(query, args=(), one=False):
         res = cur.fetchall()
         return (res[0] if res else None) if one else res
 
-# Login Protector
+# Login 
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
