@@ -83,7 +83,6 @@ def clear():
     db_run("DELETE FROM expenses WHERE user_id = ?", [session["user_id"]])
     return redirect("/")
 
-# Standard  
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
