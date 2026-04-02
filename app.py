@@ -9,8 +9,8 @@ import sqlite3
 app = Flask(__name__)
 app.config.update(
     SESSION_PERMANENT=False,
-   
-
+    SESSION_TYPE="filesystem",
+    
 )
 Session(app)
 
