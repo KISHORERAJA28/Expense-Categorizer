@@ -7,7 +7,8 @@ from werkzeug.security import check_password_hash, generate_password_hash
 import sqlite3
 
 app = Flask(__name__)
-
+app.config.update(
+    
 
 )
 Session(app)
