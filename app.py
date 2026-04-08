@@ -12,6 +12,13 @@ app.config.update(
     SESSION_TYPE="filesystem",
     SECRET_KEY=os.urandom(24)
 )
+
+app = Flask(__name__)
+app.config.update(
+    SESSION_PERMANENT=False,
+    SESSION_TYPE="filesystem",
+    SECRET_KEY=os.urandom(24)
+)
 Session(app)
 
 def db_run(query, args=(), one=False):
