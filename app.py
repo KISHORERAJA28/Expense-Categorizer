@@ -13,9 +13,6 @@ app.config.update(
     SECRET_KEY=os.urandom(24)
 )
 
-app = Flask(__name__)
-app.config.update(
-    SESSION_PERMANENT=False,
   
 Session(app)
 
